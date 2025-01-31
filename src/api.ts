@@ -733,6 +733,38 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
       reply.status(500).send({ error: 'Error getting metrics' })
     }
   })
+
+  server.post('/cycleData', async (_request: TransactionRequest & Request, reply) => {
+    try {
+      const requestData = _request.body
+      const result = validateRequestData(requestData, {
+        cycle: 'n?',
+        sender: 's',
+        sign: 'o',
+      })
+
+      if (!result.success) {
+        reply.send(Crypto.sign({ success: false, error: result.error }))
+        return
+      }
+
+      const { cycle } = requestData
+
+      if (cycle <= 0 || Number.isNaN(cycle)) {
+        reply.send(Crypto.sign({ success: false, error: `Invalid cycle` }))
+        return
+      }
+
+      const totalReceipts = await ReceiptDB.queryReceiptCountByCycles(cycle, cycle)
+      const totalTransactions = await TransactionDB.queryTransactionCountBetweenCycles(cycle, cycle)
+      const res = { totalReceipts, totalTransactions }
+
+      reply.send(Crypto.sign({ success: true, data: res }))
+    } catch (error) {
+      console.error('Error fetching cycleData on receipt and transaction count:', error)
+      reply.send(Crypto.sign({ success: false, error: 'Error in /cycleData' }))
+    }
+  })
 }
 
 export const validateRequestData = (
