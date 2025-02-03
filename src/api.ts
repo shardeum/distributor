@@ -556,6 +556,7 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
       txId: string
       page: number
       appReceiptId: string
+      cycle: number
     }
   }>
 
@@ -731,6 +732,40 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
     } catch (e) {
       Logger.mainLogger.error('Error getting metrics', e)
       reply.status(500).send({ error: 'Error getting metrics' })
+    }
+  })
+
+  server.post('/cycleData', async (_request: TransactionRequest & Request, reply) => {
+    try {
+      const requestData = _request.body
+      const result = validateRequestData(requestData, {
+        cycle: 'n?',
+        sender: 's',
+        sign: 'o',
+      })
+
+      if (!result.success) {
+        reply.send(Crypto.sign({ success: false, error: result.error }))
+        return
+      }
+
+      const { cycle } = requestData
+
+      if (cycle <= 0 || Number.isNaN(cycle)) {
+        reply.send(Crypto.sign({ success: false, error: `Invalid cycle` }))
+        return
+      }
+
+      const [totalReceipts, totalTransactions] = await Promise.all([
+        ReceiptDB.queryReceiptCountByCycles(cycle, cycle),
+        TransactionDB.queryTransactionCountBetweenCycles(cycle, cycle)
+      ])
+      const res = { totalReceipts, totalTransactions }
+
+      reply.send(Crypto.sign({ success: true, data: res }))
+    } catch (error) {
+      console.error('Error fetching cycleData on receipt and transaction count:', error)
+      reply.send(Crypto.sign({ success: false, error: 'Error in /cycleData' }))
     }
   })
 }
