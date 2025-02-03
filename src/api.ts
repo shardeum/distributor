@@ -556,6 +556,7 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
       txId: string
       page: number
       appReceiptId: string
+      cycle: number
     }
   }>
 
