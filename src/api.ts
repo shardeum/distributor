@@ -67,7 +67,7 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
       sign: 'o',
     })
     if (!result.success) {
-      reply.send(Crypto.sign({ success: false, error: result.error }))
+      reply.status(400).send(Crypto.sign({ success: false, error: result.error }))
       return
     }
     const { start, end, count } = requestData
@@ -142,7 +142,7 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
       sign: 'o',
     })
     if (!result.success) {
-      reply.send(Crypto.sign({ success: false, error: result.error }))
+      reply.status(400).send(Crypto.sign({ success: false, error: result.error }))
       return
     }
     const { count, start, end, startCycle, endCycle, type, page, txId, txIdList } = requestData
@@ -289,7 +289,7 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
       sign: 'o',
     })
     if (!result.success) {
-      reply.send(Crypto.sign({ success: false, error: result.error }))
+      reply.status(400).send(Crypto.sign({ success: false, error: result.error }))
       return
     }
     const { count, start, end, startCycle, endCycle, type, page, txId, txIdList } = requestData
