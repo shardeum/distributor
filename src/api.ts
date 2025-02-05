@@ -758,7 +758,7 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
 
       const [totalReceipts, totalTransactions] = await Promise.all([
         ReceiptDB.queryReceiptCountBetweenCycles(cycle, cycle),
-        TransactionDB.queryTransactionCountBetweenCycles(cycle, cycle)
+        OriginalTxDB.queryOriginalTxDataCount(cycle, cycle),
       ])
       const res = { totalReceipts, totalTransactions }
 
