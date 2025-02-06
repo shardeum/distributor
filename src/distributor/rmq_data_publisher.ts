@@ -37,7 +37,7 @@ export default class RMQDataPublisher {
   private isConnClosing = false
 
   private cycleCursor = 0
-  private batchSize = 5
+  private batchSize = 12
   private cursorUpdatedAt = Date.now()
   private cycleConfirmThreshold = this.batchSize - 1
   private cursorUpdateThresholdInMillis = 60_000 // 1 minute
