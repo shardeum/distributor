@@ -751,8 +751,8 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
 
       const { cycle } = requestData
 
-      if (cycle <= 0 || Number.isNaN(cycle)) {
-        reply.send(Crypto.sign({ success: false, error: `Invalid cycle` }))
+      if (cycle < 0 || Number.isNaN(cycle)) {
+        reply.send(Crypto.sign({ success: false, error: `Invalid cycle. Must be a number >= 0` }))
         return
       }
 
