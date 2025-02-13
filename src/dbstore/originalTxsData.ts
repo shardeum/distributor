@@ -72,7 +72,7 @@ export async function queryOriginalTxDataCount(startCycle?: number, endCycle?: n
   try {
     let sql = `SELECT COUNT(*) FROM originalTxsData`
     const values: number[] = []
-    if (startCycle && endCycle) {
+    if (isNumber(startCycle) && isNumber(endCycle)) {
       sql += ` WHERE cycle BETWEEN ? AND ?`
       values.push(startCycle, endCycle)
     }
