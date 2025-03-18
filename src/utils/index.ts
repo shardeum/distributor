@@ -26,9 +26,7 @@ export function setHashKey(key: string): void {
 export function initLogger(): void {
   let logsConfig: Logger.LogsConfiguration
   try {
-    logsConfig = StringUtils.safeJsonParse(
-      readFileSync(resolve(__dirname, '../../../distributor-log.json'), 'utf8')
-    )
+    logsConfig = StringUtils.safeJsonParse(readFileSync(resolve(__dirname, '../../../distributor-log.json'), 'utf8'))
   } catch (err) {
     console.log('Failed to parse distributor log file:', err)
   }

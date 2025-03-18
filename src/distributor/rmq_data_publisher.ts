@@ -200,11 +200,7 @@ export default class RMQDataPublisher {
     const diff = Date.now() - this.cursorUpdatedAt
     if (updateCursor && diff >= this.cursorUpdateThresholdInMillis) {
       this.cursorUpdatedAt = Date.now()
-      CheckpointDao.upsertCheckpoint(
-        this.checkpointDataType,
-        distributorMode.MQ,
-        JSON.stringify(this.cycleCursor)
-      )
+      CheckpointDao.upsertCheckpoint(this.checkpointDataType, distributorMode.MQ, JSON.stringify(this.cycleCursor))
     }
   }
 
@@ -272,11 +268,7 @@ export default class RMQDataPublisher {
       try {
         for (let i = 0; i < messages.length; i++) {
           const message = {
-            signedData: Crypto.sign(
-              messages.at(i),
-              config.DISTRIBUTOR_SECRET_KEY,
-              config.DISTRIBUTOR_PUBLIC_KEY
-            ),
+            signedData: Crypto.sign(messages.at(i), config.DISTRIBUTOR_SECRET_KEY, config.DISTRIBUTOR_PUBLIC_KEY),
           }
           if (!this.isConnected) {
             return
@@ -290,16 +282,12 @@ export default class RMQDataPublisher {
         const start = Date.now()
         await this.channel.waitForConfirms()
         const end = Date.now()
-        console.log(
-          `Done waiting for confirmation for messages on ${exchange} | Time taken: ${end - start} ms`
-        )
+        console.log(`Done waiting for confirmation for messages on ${exchange} | Time taken: ${end - start} ms`)
         lastErr = null
         return
       } catch (e) {
         lastErr = e
-        console.log(
-          `❌ [${exchange.toUpperCase()} publishMessages] Error while publishing message to queue: ${e}`
-        )
+        console.log(`❌ [${exchange.toUpperCase()} publishMessages] Error while publishing message to queue: ${e}`)
       }
     }
     if (lastErr != null) {

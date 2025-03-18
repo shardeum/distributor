@@ -50,9 +50,7 @@ export async function bulkInsertOriginalTxsData(originalTxsData: OriginalTxData[
     const placeholders = Object.keys(originalTxsData[0]).fill('?').join(', ')
     const values = db.extractValuesFromArray(originalTxsData)
     if (!values || values.length === 0) {
-      throw new Error(
-        `No values extracted from originalTxsData. Number of originalTxsData: ${originalTxsData.length}`
-      )
+      throw new Error(`No values extracted from originalTxsData. Number of originalTxsData: ${originalTxsData.length}`)
     }
     let sql = 'INSERT OR REPLACE INTO originalTxsData (' + fields + ') VALUES (' + placeholders + ')'
     for (let i = 1; i < originalTxsData.length; i++) {
@@ -159,9 +157,7 @@ export async function queryOriginalTxDataCountByCycles(
 
 export async function queryLatestOriginalTxs(count: number): Promise<DBOriginalTxData[] | void> {
   try {
-    const sql = `SELECT * FROM originalTxsData ORDER BY cycle DESC, timestamp DESC LIMIT ${
-      count ? count : 100
-    }`
+    const sql = `SELECT * FROM originalTxsData ORDER BY cycle DESC, timestamp DESC LIMIT ${count ? count : 100}`
     const originalTxs = (await db.all(originalTxDataDatabase, sql)) as DBOriginalTxData[]
     if (originalTxs.length > 0) {
       originalTxs.forEach((tx: DBOriginalTxData) => {

@@ -36,22 +36,15 @@
     },
     "categories": {
       "default": {
-        "appenders": [
-          "out"
-        ],
+        "appenders": ["out"],
         "level": "trace"
       },
       "main": {
-        "appenders": [
-          "main",
-          "errors"
-        ],
+        "appenders": ["main", "errors"],
         "level": "trace"
       },
       "fatal": {
-        "appenders": [
-          "fatal"
-        ],
+        "appenders": ["fatal"],
         "level": "fatal"
       }
     }

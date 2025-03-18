@@ -93,9 +93,7 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
       const cycleCount = to - from
       if (cycleCount > MAX_CYCLES_PER_REQUEST) {
         Logger.mainLogger.error(`Exceed maximum limit of ${MAX_CYCLES_PER_REQUEST} cycles`)
-        reply.send(
-          Crypto.sign({ success: false, error: `Exceed maximum limit of ${MAX_CYCLES_PER_REQUEST} cycles` })
-        )
+        reply.send(Crypto.sign({ success: false, error: `Exceed maximum limit of ${MAX_CYCLES_PER_REQUEST} cycles` }))
         return
       }
       cycleInfo = (await CycleDB.queryCycleRecordsBetween(from, to)) || []

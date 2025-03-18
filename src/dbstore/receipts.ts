@@ -118,10 +118,7 @@ export async function insertReceipt(receipt: Receipt): Promise<void> {
     }
   } catch (e) {
     Logger.mainLogger.error(e)
-    Logger.mainLogger.error(
-      'Unable to insert Receipt or it is already stored in to database',
-      receipt.receiptId
-    )
+    Logger.mainLogger.error('Unable to insert Receipt or it is already stored in to database', receipt.receiptId)
   }
 }
 
@@ -273,12 +270,7 @@ export async function queryReceiptsBetweenCycles(
     console.log(e)
   }
   if (config.VERBOSE) {
-    Logger.mainLogger.debug(
-      'Receipt receipts between cycles',
-      receipts ? receipts.length : receipts,
-      'skip',
-      skip
-    )
+    Logger.mainLogger.debug('Receipt receipts between cycles', receipts ? receipts.length : receipts, 'skip', skip)
   }
   return receipts
 }

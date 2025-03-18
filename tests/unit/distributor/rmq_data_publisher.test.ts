@@ -155,11 +155,10 @@ describe('RMQDataPublisher Tests', () => {
   test('should update checkpoint after given threshold', async () => {
     ;(CheckpointDao.getCheckpoint as jest.Mock).mockResolvedValue({ id: 1, cursor: '0' })
     ;(CheckpointDao.upsertCheckpoint as jest.Mock).mockResolvedValue({})
-    
+
     // Create enough cycles to exceed the cycleConfirmThreshold (which is batchSize - 1 = 20)
     const cycles = Array.from({ length: 25 }, (_, i) => ({ counter: i + 1 }))
     ;(queryCycleRecordsBetween as jest.Mock).mockResolvedValue(cycles)
-    
     ;(queryOriginalTxsData as jest.Mock).mockResolvedValue([{ cycle: 1 }, { cycle: 2 }])
     ;(queryReceiptsBetweenCycles as jest.Mock).mockResolvedValue([{ cycle: 1 }, { cycle: 2 }])
     ;(sleep as jest.Mock).mockResolvedValue(undefined)

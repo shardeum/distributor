@@ -68,9 +68,7 @@ const initDistributor = async (): Promise<void> => {
       Logger.mainLogger.debug(`⛏️ Worker ${newWorker.process.pid} started to replace the terminated one`)
     })
 
-    console.log(
-      `Primary Process Heap Memory limit: ${v8.getHeapStatistics().heap_size_limit / 1024 / 1024} MB`
-    )
+    console.log(`Primary Process Heap Memory limit: ${v8.getHeapStatistics().heap_size_limit / 1024 / 1024} MB`)
     setInterval(() => {
       const memoryUsage = process.memoryUsage()
       console.log(

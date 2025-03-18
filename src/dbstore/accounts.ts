@@ -33,10 +33,7 @@ export async function insertAccount(account: AccountsCopy): Promise<void> {
     }
   } catch (e) {
     Logger.mainLogger.error(e)
-    Logger.mainLogger.error(
-      'Unable to insert Account or it is already stored in to database',
-      account.accountId
-    )
+    Logger.mainLogger.error('Unable to insert Account or it is already stored in to database', account.accountId)
   }
 }
 
@@ -95,9 +92,7 @@ export async function queryAccountByAccountId(accountId: string): Promise<Accoun
 
 export async function queryLatestAccounts(count: number): Promise<AccountsCopy[] | void> {
   try {
-    const sql = `SELECT * FROM accounts ORDER BY cycleNumber DESC, timestamp DESC LIMIT ${
-      count ? count : 100
-    }`
+    const sql = `SELECT * FROM accounts ORDER BY cycleNumber DESC, timestamp DESC LIMIT ${count ? count : 100}`
     const accounts = (await db.all(accountDatabase, sql)) as DBAccount[]
     if (accounts.length > 0) {
       accounts.forEach((account: DBAccount) => {
@@ -186,12 +181,7 @@ export async function queryAccountsBetweenCycles(
     Logger.mainLogger.error(e)
   }
   if (config.VERBOSE) {
-    Logger.mainLogger.debug(
-      'Account accounts between cycles',
-      accounts ? accounts.length : accounts,
-      'skip',
-      skip
-    )
+    Logger.mainLogger.debug('Account accounts between cycles', accounts ? accounts.length : accounts, 'skip', skip)
   }
   return accounts
 }

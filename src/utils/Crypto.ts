@@ -4,7 +4,6 @@ import { Utils as StringUtils } from '@shardeum-foundation/lib-types'
 import { getDistributorInfo, getDistributorSecretKey } from './index'
 // Crypto initialization fns
 
-
 export function setCryptoHashKey(hashkey: string): void {
   core.init(hashkey)
   core.setCustomStringifier(StringUtils.safeStringify, 'shardus_safeStringify')

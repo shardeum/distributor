@@ -31,9 +31,7 @@ const connectToSocketClient = (clientKey: string, clientRequestData: ClientReque
 }
 
 export const initHttpServer = async (worker: Worker): Promise<void> => {
-  const serverFactory = (
-    handler: (req: http.IncomingMessage, res: http.ServerResponse) => void
-  ): http.Server => {
+  const serverFactory = (handler: (req: http.IncomingMessage, res: http.ServerResponse) => void): http.Server => {
     httpServer = http.createServer((req, res) => {
       handler(req, res)
     })
@@ -104,9 +102,7 @@ const initSocketServer = async (httpServer: http.Server, worker: Worker): Promis
         socket,
       })
     } else {
-      Logger.mainLogger.debug(
-        `❌ Unauthorized Client Request from ${req.headers.host}, Reason: ${auth.error}`
-      )
+      Logger.mainLogger.debug(`❌ Unauthorized Client Request from ${req.headers.host}, Reason: ${auth.error}`)
 
       socket.write('HTTP/1.1 401 Unauthorized\r\n')
       socket.write('Content-Type: text/plain\r\n')
