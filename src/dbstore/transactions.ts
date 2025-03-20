@@ -37,10 +37,7 @@ export async function insertTransaction(transaction: Transaction): Promise<void>
     }
   } catch (e) {
     Logger.mainLogger.error(e)
-    Logger.mainLogger.error(
-      'Unable to insert Transaction or it is already stored in to database',
-      transaction.txId
-    )
+    Logger.mainLogger.error('Unable to insert Transaction or it is already stored in to database', transaction.txId)
   }
 }
 
@@ -70,8 +67,7 @@ export async function queryTransactionByTxId(txId: string): Promise<Transaction 
     const transaction = (await db.get(transactionDatabase, sql, [txId])) as DBTransaction
     if (transaction) {
       if (transaction.data) transaction.data = DeSerializeFromJsonString(transaction.data)
-      if (transaction.originalTxData)
-        transaction.originalTxData = DeSerializeFromJsonString(transaction.originalTxData)
+      if (transaction.originalTxData) transaction.originalTxData = DeSerializeFromJsonString(transaction.originalTxData)
     }
     if (config.VERBOSE) {
       Logger.mainLogger.debug('Transaction txId', transaction)
@@ -88,8 +84,7 @@ export async function queryTransactionByAccountId(accountId: string): Promise<Tr
     const transaction = (await db.get(transactionDatabase, sql, [accountId])) as DBTransaction
     if (transaction) {
       if (transaction.data) transaction.data = DeSerializeFromJsonString(transaction.data)
-      if (transaction.originalTxData)
-        transaction.originalTxData = DeSerializeFromJsonString(transaction.originalTxData)
+      if (transaction.originalTxData) transaction.originalTxData = DeSerializeFromJsonString(transaction.originalTxData)
     }
     if (config.VERBOSE) {
       Logger.mainLogger.debug('Transaction accountId', transaction)
@@ -102,9 +97,7 @@ export async function queryTransactionByAccountId(accountId: string): Promise<Tr
 
 export async function queryLatestTransactions(count: number): Promise<Transaction[] | void> {
   try {
-    const sql = `SELECT * FROM transactions ORDER BY cycleNumber DESC, timestamp DESC LIMIT ${
-      count ? count : 100
-    }`
+    const sql = `SELECT * FROM transactions ORDER BY cycleNumber DESC, timestamp DESC LIMIT ${count ? count : 100}`
     const transactions = (await db.all(transactionDatabase, sql)) as DBTransaction[]
     if (transactions.length > 0) {
       transactions.forEach((transaction: DBTransaction) => {
@@ -138,12 +131,7 @@ export async function queryTransactions(skip = 0, limit = 10000): Promise<Transa
     Logger.mainLogger.error(e)
   }
   if (config.VERBOSE) {
-    Logger.mainLogger.debug(
-      'Transaction transactions',
-      transactions ? transactions.length : transactions,
-      'skip',
-      skip
-    )
+    Logger.mainLogger.debug('Transaction transactions', transactions ? transactions.length : transactions, 'skip', skip)
   }
   return transactions as unknown as Transaction[]
 }

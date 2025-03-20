@@ -95,9 +95,7 @@ export async function queryCycleByMarker(marker: string): Promise<Cycle | null> 
   }
 }
 
-export async function queryLatestCycleRecords(
-  count: number
-): Promise<P2P.CycleCreatorTypes.CycleRecord[] | void> {
+export async function queryLatestCycleRecords(count: number): Promise<P2P.CycleCreatorTypes.CycleRecord[] | void> {
   try {
     const sql = `SELECT * FROM cycles ORDER BY counter DESC LIMIT ${count ? count : 100}`
     const cycleRecords: DBCycle[] = (await db.all(cycleDatabase, sql)) as DBCycle[]
