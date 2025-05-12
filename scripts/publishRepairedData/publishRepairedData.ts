@@ -13,40 +13,34 @@ import { Receipt } from '../../src/dbstore/receipts'
 import { OriginalTxData } from '../../src/dbstore/originalTxsData'
 import { sleep } from '../../src/utils/Utils'
 import { writeFile, mkdir } from 'fs/promises'
-import fs from 'fs'
+import * as fs from 'fs'
 
 dotenvConfig()
 
 const configFile = join(__dirname, '../distributor-config.json')
 overrideDefaultConfig(configFile, process.env, process.argv)
 
-interface RepairData {
-  archiverId: string
-  repairedItems: {
-    cycles: Array<{
-      counter: number
-      majorityHash: string
-      repairedAt: string
-    }>
-    receipts: Array<{
-      id: string
-      cycle: number
-      majorityHash: string
-      repairedAt: string
-    }>
-    transactions: Array<{
-      id: string
-      cycle: number
-      majorityHash: string
-      repairedAt: string
-    }>
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const Logger = require('../../src/Logger')
+  if (!Logger.mainLogger) {
+    Logger.mainLogger = {
+      debug: (...args: any[]): void => {
+        /* mock */
+      },
+      info: (...args: any[]): void => {
+        /* mock */
+      },
+      warn: (...args: any[]): void => {
+        /* mock */
+      },
+      error: (...args: any[]): void => {
+        /* mock */
+      },
+    }
   }
-  timestamp: number
-  metadata: {
-    healArchiverVersion: string
-    repairSessionId: string
-    totalItemsRepaired: number
-  }
+} catch (e) {
+  // If Logger cannot be required, do nothing
 }
 
 interface ScriptConfig {
@@ -83,6 +77,14 @@ interface PublishSummary {
     receipts: Array<{ id: string; cycle: number; majorityHash: string }>
     transactions: Array<{ id: string; cycle: number; majorityHash: string }>
   }
+}
+
+interface MissingData {
+  cycles: Array<{ counter: number; majorityHash?: string }>
+  receipts: Array<{ id: string; cycle: number; majorityHash?: string }>
+  accounts: Array<{ id: string; majorityHash?: string; cycle?: number; cycleNumber?: number }>
+  transactions: Array<{ id: string; cycle: number; majorityHash?: string; cycleNumber?: number }>
+  timestamp: number
 }
 
 const logger = {
@@ -148,35 +150,50 @@ interface PublishResult {
 
 class DataRepairPublisher {
   private rmqPublisher: RMQDataPublisher
-  private repairData: RepairData
+  private repairData: MissingData
   private config: ScriptConfig
 
   constructor(config: ScriptConfig) {
     this.rmqPublisher = rmqPublisher
     this.repairData = {
-      archiverId: '',
-      repairedItems: {
-        cycles: [],
-        receipts: [],
-        transactions: [],
-      },
+      cycles: [],
+      receipts: [],
+      accounts: [],
+      transactions: [],
       timestamp: 0,
-      metadata: {
-        healArchiverVersion: '',
-        repairSessionId: '',
-        totalItemsRepaired: 0,
-      },
     }
     this.config = config
   }
 
   async loadRepairData(): Promise<void> {
     try {
-      const data = JSON.parse(readFileSync(this.config.inputFile, 'utf-8'))
+      const data = JSON.parse(readFileSync(this.config.inputFile, 'utf-8')) as MissingData
+
+      if (!Array.isArray(data.cycles) || !Array.isArray(data.receipts) || !Array.isArray(data.transactions)) {
+        throw new Error('Invalid data structure: missing required arrays')
+      }
+
+      const invalidCycles = data.cycles.filter((cycle) => typeof cycle.counter !== 'number' || cycle.counter < 0)
+      if (invalidCycles.length > 0) {
+        throw new Error(`Invalid cycle numbers found: ${invalidCycles.map((c) => c.counter).join(', ')}`)
+      }
+
+      const invalidReceipts = data.receipts.filter((receipt) => !receipt.id || typeof receipt.cycle !== 'number')
+      if (invalidReceipts.length > 0) {
+        throw new Error(`Invalid receipt data found: ${invalidReceipts.map((r) => r.id).join(', ')}`)
+      }
+
+      const invalidTxs = data.transactions.filter((tx) => !tx.id || typeof tx.cycle !== 'number')
+      if (invalidTxs.length > 0) {
+        throw new Error(`Invalid transaction data found: ${invalidTxs.map((t) => t.id).join(', ')}`)
+      }
+
       this.repairData = data
       logger.info(`Loaded repair data from ${this.config.inputFile}`, {
-        archiverId: data.archiverId,
-        totalItems: data.metadata.totalItemsRepaired,
+        totalItems: data.cycles.length + data.receipts.length + data.transactions.length,
+        cycles: data.cycles.length,
+        receipts: data.receipts.length,
+        transactions: data.transactions.length,
       })
     } catch (error) {
       logger.error(`Failed to load repair data from ${this.config.inputFile}`, { error })
@@ -188,9 +205,12 @@ class DataRepairPublisher {
     try {
       await dbstore.initializeDB(distributorConfig)
 
-      await this.rmqPublisher.start()
-
-      logger.info('Initialized DataRepairPublisher')
+      if (!this.config.dryRun) {
+        await this.rmqPublisher.start()
+        logger.info('Initialized DataRepairPublisher with RMQ connection')
+      } else {
+        logger.info('Initialized DataRepairPublisher in dry run mode')
+      }
     } catch (error) {
       logger.error('Failed to initialize DataRepairPublisher', { error })
       throw error
@@ -215,24 +235,10 @@ class DataRepairPublisher {
       }
 
       const cycles: CycleRecord[] = []
-      let skip = 0
-      const limit = this.config.batchSize
-      let hasMore = true
-
-      while (hasMore) {
-        const batch = await CycleDB.queryCycleRecordsBetween(skip, skip + limit - 1)
-        if (!batch || batch.length === 0) {
-          hasMore = false
-          break
-        }
-
-        const matchingCycles = batch.filter((cycle) => cycleIds.includes(cycle.counter))
-        cycles.push(...matchingCycles)
-
-        if (batch.length < limit) {
-          hasMore = false
-        } else {
-          skip += limit
+      for (const cycleId of cycleIds) {
+        const batch = await CycleDB.queryCycleRecordsBetween(cycleId, cycleId)
+        if (batch && batch.length > 0) {
+          cycles.push(...batch)
         }
       }
 
@@ -251,24 +257,10 @@ class DataRepairPublisher {
       }
 
       const receipts: Receipt[] = []
-      let skip = 0
-      const limit = this.config.batchSize
-      let hasMore = true
-
-      while (hasMore) {
-        const batch = await ReceiptDB.queryReceipts(skip, limit)
-        if (!batch || batch.length === 0) {
-          hasMore = false
-          break
-        }
-
-        const matchingReceipts = batch.filter((receipt) => receiptIds.includes(receipt.receiptId))
-        receipts.push(...matchingReceipts)
-
-        if (batch.length < limit) {
-          hasMore = false
-        } else {
-          skip += limit
+      for (const receiptId of receiptIds) {
+        const receipt = await ReceiptDB.queryReceiptByReceiptId(receiptId)
+        if (receipt) {
+          receipts.push(receipt)
         }
       }
 
@@ -287,28 +279,14 @@ class DataRepairPublisher {
       }
 
       const transactions: OriginalTxData[] = []
-      let skip = 0
-      const limit = this.config.batchSize
-      let hasMore = true
-
-      while (hasMore) {
-        const batch = await OriginalTxsDataDB.queryOriginalTxsData(skip, limit)
-        if (!batch || batch.length === 0) {
-          hasMore = false
-          break
-        }
-
-        const matchingTxs = batch.filter((tx) => txIds.includes(tx.txId))
-        transactions.push(...matchingTxs)
-
-        if (batch.length < limit) {
-          hasMore = false
-        } else {
-          skip += limit
+      for (const txId of txIds) {
+        const tx = await OriginalTxsDataDB.queryOriginalTxDataByTxId(txId)
+        if (tx) {
+          transactions.push(tx)
         }
       }
 
-      logger.info(`Found ${transactions.length} original transactions in database`)
+      logger.info(`Found ${transactions.length} transactions in database`)
       return transactions
     } catch (error) {
       logger.error('Failed to fetch repaired transactions', { error })
@@ -321,6 +299,11 @@ class DataRepairPublisher {
     label: string,
     batchNum: number
   ): Promise<boolean> {
+    if (this.config.dryRun) {
+      logger.info(`[DRY RUN] Would publish ${label} batch ${batchNum}`)
+      return true
+    }
+
     let attempt = 0
     while (attempt < this.config.maxRetries) {
       try {
@@ -348,13 +331,35 @@ class DataRepairPublisher {
     const batchSize = this.config.batchSize
     const batches = this.batchArray(items, batchSize)
     const result: BatchResult = { published: 0, failed: 0 }
+    const totalBatches = batches.length
+
+    logger.info(`Starting to process ${totalBatches} batches of ${label}`)
 
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i]
-      const ok = await this.publishWithRetries(() => publishFn(batch), label, i + 1)
-      if (ok) result.published += batch.length
-      else result.failed += batch.length
+      const progress = (((i + 1) / totalBatches) * 100).toFixed(1)
+
+      try {
+        const ok = await this.publishWithRetries(() => publishFn(batch), label, i + 1)
+        if (ok) {
+          result.published += batch.length
+          logger.info(`Progress: ${progress}% - Published batch ${i + 1}/${totalBatches} of ${label}`)
+        } else {
+          result.failed += batch.length
+          logger.warn(`Progress: ${progress}% - Failed batch ${i + 1}/${totalBatches} of ${label}`)
+        }
+      } catch (error) {
+        result.failed += batch.length
+        logger.error(`Progress: ${progress}% - Error processing batch ${i + 1}/${totalBatches} of ${label}`, { error })
+      }
     }
+
+    logger.info(`Completed processing ${label}`, {
+      total: items.length,
+      published: result.published,
+      failed: result.failed,
+      successRate: ((result.published / items.length) * 100).toFixed(1) + '%',
+    })
 
     return result
   }
@@ -372,9 +377,9 @@ class DataRepairPublisher {
     receiptIds: string[]
     txIds: string[]
   }> {
-    const cycleIds = this.repairData.repairedItems.cycles.map((cycle) => cycle.counter)
-    const receiptIds = this.repairData.repairedItems.receipts.map((receipt) => receipt.id)
-    const txIds = this.repairData.repairedItems.transactions.map((tx) => tx.id)
+    const cycleIds = this.repairData.cycles.map((cycle) => cycle.counter)
+    const receiptIds = this.repairData.receipts.map((receipt) => receipt.id)
+    const txIds = this.repairData.transactions.map((tx) => tx.id)
 
     return { cycleIds, receiptIds, txIds }
   }
@@ -399,33 +404,20 @@ class DataRepairPublisher {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
     const outputDir = join(__dirname, 'output')
     const retryPath = join(outputDir, `retry-items-${timestamp}.json`)
-    const retryData: RepairData = {
-      archiverId: this.repairData.archiverId,
-      repairedItems: {
-        cycles: failedItems.cycles.map((item) => ({
-          counter: item.counter,
-          majorityHash: item.majorityHash,
-          repairedAt: new Date().toISOString(),
-        })),
-        receipts: failedItems.receipts.map((item) => ({
-          id: item.id,
-          cycle: item.cycle,
-          majorityHash: item.majorityHash,
-          repairedAt: new Date().toISOString(),
-        })),
-        transactions: failedItems.transactions.map((item) => ({
-          id: item.id,
-          cycle: item.cycle,
-          majorityHash: item.majorityHash,
-          repairedAt: new Date().toISOString(),
-        })),
-      },
+    const retryData: MissingData = {
+      cycles: failedItems.cycles.map((item) => ({ counter: item.counter, majorityHash: item.majorityHash })),
+      receipts: failedItems.receipts.map((item) => ({
+        id: item.id,
+        cycle: item.cycle,
+        majorityHash: item.majorityHash,
+      })),
+      accounts: [],
+      transactions: failedItems.transactions.map((item) => ({
+        id: item.id,
+        cycle: item.cycle,
+        majorityHash: item.majorityHash,
+      })),
       timestamp: Date.now(),
-      metadata: {
-        healArchiverVersion: this.repairData.metadata.healArchiverVersion,
-        repairSessionId: `retry-${timestamp}`,
-        totalItemsRepaired: failedItems.cycles.length + failedItems.receipts.length + failedItems.transactions.length,
-      },
     }
     try {
       if (!fs.existsSync(outputDir)) {
@@ -453,7 +445,7 @@ class DataRepairPublisher {
     if (results.cycles.failed > 0) {
       const failedCycles = cycles.slice(-results.cycles.failed)
       failedItems.cycles = failedCycles.map((cycle) => {
-        const cycleData = this.repairData.repairedItems.cycles.find((c) => c.counter === cycle.counter)
+        const cycleData = this.repairData.cycles.find((c) => c.counter === cycle.counter)
         return {
           counter: cycle.counter,
           majorityHash: cycleData?.majorityHash || '',
@@ -464,7 +456,7 @@ class DataRepairPublisher {
     if (results.receipts.failed > 0) {
       const failedReceipts = receipts.slice(-results.receipts.failed)
       failedItems.receipts = failedReceipts.map((receipt) => {
-        const receiptData = this.repairData.repairedItems.receipts.find((r) => r.id === receipt.receiptId)
+        const receiptData = this.repairData.receipts.find((r) => r.id === receipt.receiptId)
         return {
           id: receipt.receiptId,
           cycle: receipt.cycle,
@@ -476,7 +468,7 @@ class DataRepairPublisher {
     if (results.transactions.failed > 0) {
       const failedTxs = transactions.slice(-results.transactions.failed)
       failedItems.transactions = failedTxs.map((tx) => {
-        const txData = this.repairData.repairedItems.transactions.find((t) => t.id === tx.txId)
+        const txData = this.repairData.transactions.find((t) => t.id === tx.txId)
         return {
           id: tx.txId,
           cycle: tx.cycle,
@@ -573,5 +565,3 @@ if (require.main === module) {
     process.exit(1)
   })
 }
-
-export { DataRepairPublisher, RepairData, ScriptConfig }
