@@ -204,7 +204,7 @@ export default class RMQDataPublisher {
     }
   }
 
-  private async publishCycles(cycles: CycleData[]): Promise<void> {
+  public async publishCycles(cycles: CycleData[]): Promise<void> {
     if (cycles.length <= 0) return
     const messages = []
     for (let i = 0; i < cycles.length; i++) {
@@ -225,7 +225,7 @@ export default class RMQDataPublisher {
     }
   }
 
-  private async publishTransactions(transactions: OriginalTxData[]): Promise<void> {
+  public async publishTransactions(transactions: OriginalTxData[]): Promise<void> {
     if (transactions.length <= 0) return
     const messages = []
     for (let i = 0; i < transactions.length; i++) {
@@ -242,7 +242,7 @@ export default class RMQDataPublisher {
     }
   }
 
-  private async publishReceipts(receipts: Receipt[]): Promise<void> {
+  public async publishReceipts(receipts: Receipt[]): Promise<void> {
     if (receipts.length <= 0) return
     const messages = []
     for (let i = 0; i < receipts.length; i++) {

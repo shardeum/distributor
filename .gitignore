@@ -10,3 +10,6 @@ archiverdb.sqlite3-wal
 
 distributor.log
 db
+
+# Ignore output files from publishRepairedData script
+scripts/publishRepairedData/output/
