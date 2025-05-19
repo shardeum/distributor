@@ -73,17 +73,17 @@ interface PublishSummary {
     transactions: number
   }
   failedItems?: {
-    cycles: Array<{ counter: number; majorityHash: string }>
-    receipts: Array<{ id: string; cycle: number; majorityHash: string }>
-    transactions: Array<{ id: string; cycle: number; majorityHash: string }>
+    cycles: Array<{ counter: number; hash: string }>
+    receipts: Array<{ id: string; cycle: number; hash: string }>
+    transactions: Array<{ id: string; cycle: number; hash: string }>
   }
 }
 
 interface MissingData {
-  cycles: Array<{ counter: number; majorityHash?: string }>
-  receipts: Array<{ id: string; cycle: number; majorityHash?: string }>
-  accounts: Array<{ id: string; majorityHash?: string; cycle?: number; cycleNumber?: number }>
-  transactions: Array<{ id: string; cycle: number; majorityHash?: string; cycleNumber?: number }>
+  cycles: Array<{ counter: number; hash?: string }>
+  receipts: Array<{ id: string; cycle: number; hash?: string }>
+  // accounts: Array<{ id: string; hash?: string }>
+  transactions: Array<{ id: string; cycle: number; hash?: string }>
   timestamp: number
 }
 
@@ -158,7 +158,7 @@ class DataRepairPublisher {
     this.repairData = {
       cycles: [],
       receipts: [],
-      accounts: [],
+      // accounts: [],
       transactions: [],
       timestamp: 0,
     }
@@ -167,33 +167,67 @@ class DataRepairPublisher {
 
   async loadRepairData(): Promise<void> {
     try {
-      const data = JSON.parse(readFileSync(this.config.inputFile, 'utf-8')) as MissingData
+      const data = JSON.parse(readFileSync(this.config.inputFile, 'utf-8')) as {
+        cycles: Array<{ counter: number; hash: string; missing: boolean }>
+        receipts: Array<{ id: string; cycle: number; hash: string; missing: boolean }>
+        // accounts: Array<{ id: string; hash: string; missing: boolean }>
+        transactions: Array<{ id: string; cycle: number; hash: string; missing: boolean }>
+        timestamp?: number
+      }
 
-      if (!Array.isArray(data.cycles) || !Array.isArray(data.receipts) || !Array.isArray(data.transactions)) {
+      // Only keep entries where missing === true
+      const cycles = (data.cycles || [])
+        .filter((cycle) => cycle.missing === true)
+        .map((cycle) => ({
+          counter: cycle.counter,
+          hash: cycle.hash,
+        }))
+      const receipts = (data.receipts || [])
+        .filter((receipt) => receipt.missing === true)
+        .map((receipt) => ({
+          id: receipt.id,
+          cycle: receipt.cycle,
+          hash: receipt.hash,
+        }))
+      const transactions = (data.transactions || [])
+        .filter((tx) => tx.missing === true)
+        .map((tx) => ({
+          id: tx.id,
+          cycle: tx.cycle,
+          hash: tx.hash,
+        }))
+
+      // Validation checks after filtering/mapping
+      if (!Array.isArray(cycles) || !Array.isArray(receipts) || !Array.isArray(transactions)) {
         throw new Error('Invalid data structure: missing required arrays')
       }
 
-      const invalidCycles = data.cycles.filter((cycle) => typeof cycle.counter !== 'number' || cycle.counter < 0)
+      const invalidCycles = cycles.filter((cycle) => typeof cycle.counter !== 'number' || cycle.counter < 0)
       if (invalidCycles.length > 0) {
         throw new Error(`Invalid cycle numbers found: ${invalidCycles.map((c) => c.counter).join(', ')}`)
       }
 
-      const invalidReceipts = data.receipts.filter((receipt) => !receipt.id || typeof receipt.cycle !== 'number')
+      const invalidReceipts = receipts.filter((receipt) => !receipt.id || typeof receipt.cycle !== 'number')
       if (invalidReceipts.length > 0) {
         throw new Error(`Invalid receipt data found: ${invalidReceipts.map((r) => r.id).join(', ')}`)
       }
 
-      const invalidTxs = data.transactions.filter((tx) => !tx.id || typeof tx.cycle !== 'number')
+      const invalidTxs = transactions.filter((tx) => !tx.id || typeof tx.cycle !== 'number')
       if (invalidTxs.length > 0) {
         throw new Error(`Invalid transaction data found: ${invalidTxs.map((t) => t.id).join(', ')}`)
       }
 
-      this.repairData = data
+      this.repairData = {
+        cycles,
+        receipts,
+        transactions,
+        timestamp: data.timestamp ?? Date.now(),
+      }
       logger.info(`Loaded repair data from ${this.config.inputFile}`, {
-        totalItems: data.cycles.length + data.receipts.length + data.transactions.length,
-        cycles: data.cycles.length,
-        receipts: data.receipts.length,
-        transactions: data.transactions.length,
+        totalItems: cycles.length + receipts.length + transactions.length,
+        cycles: cycles.length,
+        receipts: receipts.length,
+        transactions: transactions.length,
       })
     } catch (error) {
       logger.error(`Failed to load repair data from ${this.config.inputFile}`, { error })
@@ -405,17 +439,17 @@ class DataRepairPublisher {
     const outputDir = join(__dirname, 'output')
     const retryPath = join(outputDir, `retry-items-${timestamp}.json`)
     const retryData: MissingData = {
-      cycles: failedItems.cycles.map((item) => ({ counter: item.counter, majorityHash: item.majorityHash })),
+      cycles: failedItems.cycles.map((item) => ({ counter: item.counter, hash: item.hash })),
       receipts: failedItems.receipts.map((item) => ({
         id: item.id,
         cycle: item.cycle,
-        majorityHash: item.majorityHash,
+        hash: item.hash,
       })),
-      accounts: [],
+      // accounts: [],
       transactions: failedItems.transactions.map((item) => ({
         id: item.id,
         cycle: item.cycle,
-        majorityHash: item.majorityHash,
+        hash: item.hash,
       })),
       timestamp: Date.now(),
     }
@@ -448,7 +482,7 @@ class DataRepairPublisher {
         const cycleData = this.repairData.cycles.find((c) => c.counter === cycle.counter)
         return {
           counter: cycle.counter,
-          majorityHash: cycleData?.majorityHash || '',
+          hash: cycleData?.hash || '',
         }
       })
     }
@@ -460,7 +494,7 @@ class DataRepairPublisher {
         return {
           id: receipt.receiptId,
           cycle: receipt.cycle,
-          majorityHash: receiptData?.majorityHash || '',
+          hash: receiptData?.hash || '',
         }
       })
     }
@@ -472,7 +506,7 @@ class DataRepairPublisher {
         return {
           id: tx.txId,
           cycle: tx.cycle,
-          majorityHash: txData?.majorityHash || '',
+          hash: txData?.hash || '',
         }
       })
     }

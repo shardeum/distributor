@@ -18,29 +18,23 @@ node build/scripts/publishRepairedData/publishRepairedData.js -i <input-file> [o
 The input file from the healArchiver should be a JSON file with the following structure:
 ```json
 {
-  "archiverId": "example-archiver",
-  "repairedItems": {
-    "cycles": [
-      { "counter": 1, "majorityHash": "hash1", "repairedAt": "2024-01-01T00:00:00Z" },
-      { "counter": 2, "majorityHash": "hash2", "repairedAt": "2024-01-01T00:00:00Z" }
-    ],
-    "receipts": [
-      { "id": "receipt1", "cycle": 1, "majorityHash": "hash3", "repairedAt": "2024-01-01T00:00:00Z" },
-      { "id": "receipt2", "cycle": 1, "majorityHash": "hash4", "repairedAt": "2024-01-01T00:00:00Z" }
-    ],
-    "transactions": [
-      { "id": "tx1", "cycle": 1, "majorityHash": "hash5", "repairedAt": "2024-01-01T00:00:00Z" },
-      { "id": "tx2", "cycle": 1, "majorityHash": "hash6", "repairedAt": "2024-01-01T00:00:00Z" }
-    ]
-  },
-  "timestamp": 1234567890,
-  "metadata": {
-    "healArchiverVersion": "1.0.0",
-    "repairSessionId": "example-session",
-    "totalItemsRepaired": 6
-  }
+  "cycles": [
+    { "counter": 1, "hash": "hash1", "missing": true },
+    { "counter": 2, "hash": "hash2", "missing": true }
+  ],
+  "receipts": [
+    { "id": "receipt1", "cycle": 1, "hash": "hash3", "missing": true },
+    { "id": "receipt2", "cycle": 1, "hash": "hash4", "missing": true }
+  ],
+  "transactions": [
+    { "id": "tx1", "cycle": 1, "hash": "hash5", "missing": true },
+    { "id": "tx2", "cycle": 1, "hash": "hash6", "missing": true }
+  ],
+  "timestamp": 1234567890
 }
 ```
+- Only entries with `"missing": true` are processed.
+- The `hash` field is used for traceability in logs and retry files.
 
 ## Output
 The script writes two types of output files into the `output` directory:
@@ -73,21 +67,13 @@ The script writes two types of output files into the `output` directory:
 #### Retry File (`retry-items-2024-01-01T00-00-00.json`)
 ```json
 {
-  "archiverId": "example-archiver",
-  "repairedItems": {
-    "cycles": [
-      { "counter": 1, "majorityHash": "hash1", "repairedAt": "2024-01-01T00:00:00Z" },
-      { "counter": 2, "majorityHash": "hash2", "repairedAt": "2024-01-01T00:00:00Z" }
-    ],
-    "receipts": [],
-    "transactions": []
-  },
-  "timestamp": 1234567890,
-  "metadata": {
-    "healArchiverVersion": "1.0.0",
-    "repairSessionId": "retry-2024-01-01T00-00-00",
-    "totalItemsRepaired": 2
-  }
+  "cycles": [
+    { "counter": 1, "hash": "hash1" },
+    { "counter": 2, "hash": "hash2" }
+  ],
+  "receipts": [],
+  "transactions": [],
+  "timestamp": 1234567890
 }
 ```
 
