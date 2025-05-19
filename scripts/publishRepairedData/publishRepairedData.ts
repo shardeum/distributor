@@ -1,6 +1,6 @@
 import { config as dotenvConfig } from 'dotenv'
 import { Command } from 'commander'
-import RMQDataPublisher from '../../src/distributor/rmq_data_publisher'
+import { RMQRepairPublisher } from './rmq_repair_publisher'
 import * as CycleDB from '../../src/dbstore/cycles'
 import * as ReceiptDB from '../../src/dbstore/receipts'
 import * as OriginalTxsDataDB from '../../src/dbstore/originalTxsData'
@@ -135,7 +135,7 @@ function setupCLI(): ScriptConfig {
   }
 }
 
-const rmqPublisher = new RMQDataPublisher()
+const rmqPublisher = new RMQRepairPublisher()
 
 interface BatchResult {
   published: number
@@ -149,7 +149,7 @@ interface PublishResult {
 }
 
 class DataRepairPublisher {
-  private rmqPublisher: RMQDataPublisher
+  private rmqPublisher: RMQRepairPublisher
   private repairData: MissingData
   private config: ScriptConfig
 
