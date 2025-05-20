@@ -1,11 +1,15 @@
 import { config as dotenvConfig } from 'dotenv'
+import { join } from 'path'
+
+// Load environment variables first
+dotenvConfig({ path: join(__dirname, '../../.env') })
+
 import { Command } from 'commander'
 import { RMQRepairPublisher } from './rmq_repair_publisher'
 import * as CycleDB from '../../src/dbstore/cycles'
 import * as ReceiptDB from '../../src/dbstore/receipts'
 import * as OriginalTxsDataDB from '../../src/dbstore/originalTxsData'
 import { readFileSync } from 'fs'
-import { join } from 'path'
 import * as dbstore from '../../src/dbstore'
 import { config as distributorConfig, overrideDefaultConfig } from '../../src/Config'
 import { CycleRecord, CycleData } from '@shardeum-foundation/lib-types/build/src/p2p/CycleCreatorTypes'
@@ -14,8 +18,6 @@ import { OriginalTxData } from '../../src/dbstore/originalTxsData'
 import { sleep } from '../../src/utils/Utils'
 import { writeFile, mkdir } from 'fs/promises'
 import * as fs from 'fs'
-
-dotenvConfig()
 
 const configFile = join(__dirname, '../distributor-config.json')
 overrideDefaultConfig(configFile, process.env, process.argv)
