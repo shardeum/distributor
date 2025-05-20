@@ -1,7 +1,7 @@
-import { safeJsonParse, safeStringify } from '@shardeum-foundation/lib-types/build/src/utils/functions/stringify'
+import { safeStringify } from '@shardeum-foundation/lib-types/build/src/utils/functions/stringify'
 import { Connection, Channel, connect } from 'amqplib'
-import * as crypto from '@shardeum-foundation/lib-crypto-utils'
 import { config as distributorConfig } from '../../src/Config'
+import * as Crypto from '../../src/utils/Crypto'
 
 export class RMQRepairPublisher {
   private connection: Connection | null = null
@@ -9,7 +9,7 @@ export class RMQRepairPublisher {
   private isConnected = false
 
   async start(): Promise<void> {
-    crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
+    Crypto.setCryptoHashKey('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
     try {
       this.connection = await connect({
         protocol: process.env.RMQ_PROTOCOL || 'amqp',
@@ -66,9 +66,8 @@ export class RMQRepairPublisher {
 
     try {
       for (const message of messages) {
-        const objCopy = safeJsonParse(safeStringify(message))
         const signedMessage = {
-          signedData: crypto.signObj(
+          signedData: Crypto.sign(
             objCopy,
             distributorConfig.DISTRIBUTOR_SECRET_KEY,
             distributorConfig.DISTRIBUTOR_PUBLIC_KEY
