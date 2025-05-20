@@ -8,6 +8,7 @@ export class RMQRepairPublisher {
   async start(): Promise<void> {
     try {
       this.connection = await connect({
+        protocol: process.env.RMQ_PROTOCOL || 'amqp',
         hostname: process.env.RMQ_HOST || 'localhost',
         port: parseInt(process.env.RMQ_PORT || '5672'),
         username: process.env.RMQ_USER || 'guest',
