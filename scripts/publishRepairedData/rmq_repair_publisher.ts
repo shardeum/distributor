@@ -1,3 +1,4 @@
+import { safeStringify } from '@shardeum-foundation/lib-types/build/src/utils/functions/stringify'
 import { Connection, Channel, connect } from 'amqplib'
 
 export class RMQRepairPublisher {
@@ -62,7 +63,9 @@ export class RMQRepairPublisher {
 
     try {
       for (const message of messages) {
-        await this.channel.publish(exchangeName, '', Buffer.from(JSON.stringify(message)), { persistent: true })
+        await this.channel.publish(exchangeName, '', Buffer.from(safeStringify(message)), {
+          persistent: true,
+        })
       }
     } catch (error) {
       console.error(`Failed to publish messages to ${exchangeName}:`, error)
