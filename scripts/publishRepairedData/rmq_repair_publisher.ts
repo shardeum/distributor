@@ -1,5 +1,7 @@
 import { safeStringify } from '@shardeum-foundation/lib-types/build/src/utils/functions/stringify'
 import { Connection, Channel, connect } from 'amqplib'
+import * as Crypto from '../../src/utils/Crypto'
+import { config as distributorConfig } from '../../src/Config'
 
 export class RMQRepairPublisher {
   private connection: Connection | null = null
@@ -63,9 +65,16 @@ export class RMQRepairPublisher {
 
     try {
       for (const message of messages) {
-        await this.channel.publish(exchangeName, '', Buffer.from(safeStringify(message)), {
-          persistent: true,
-        })
+         const signedMessage = {
+           signedData: Crypto.sign(
+             message,
+             distributorConfig.DISTRIBUTOR_SECRET_KEY,
+             distributorConfig.DISTRIBUTOR_PUBLIC_KEY
+           ),
+         }
+         await this.channel.publish(exchangeName, '', Buffer.from(safeStringify(signedMessage)), {
+           persistent: true,
+         })
       }
     } catch (error) {
       console.error(`Failed to publish messages to ${exchangeName}:`, error)
