@@ -68,7 +68,7 @@ export class RMQRepairPublisher {
       for (const message of messages) {
         const signedMessage = {
           signedData: Crypto.sign(
-            objCopy,
+            message,
             distributorConfig.DISTRIBUTOR_SECRET_KEY,
             distributorConfig.DISTRIBUTOR_PUBLIC_KEY
           ),
