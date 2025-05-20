@@ -21,17 +21,17 @@ export class RMQRepairPublisher {
       // Declare exchanges
       const cyclesExchange = process.env.RMQ_CYCLES_EXCHANGE_NAME
       const receiptsExchange = process.env.RMQ_RECEIPTS_EXCHANGE_NAME
-      const transactionsExchange = process.env.RMQ_TRANSACTIONS_EXCHANGE_NAME
+      const transactionsExchange = process.env.RMQ_ORIGINAL_TXS_EXCHANGE_NAME
       const accountsExchange = process.env.RMQ_ACCOUNTS_EXCHANGE_NAME
 
-      if (!cyclesExchange || !receiptsExchange || !transactionsExchange || !accountsExchange) {
+      if (!cyclesExchange || !receiptsExchange || !transactionsExchange) {
         throw new Error('Missing required RMQ exchange names in environment variables')
       }
 
       await this.channel.assertExchange(cyclesExchange, 'fanout', { durable: true })
       await this.channel.assertExchange(receiptsExchange, 'fanout', { durable: true })
       await this.channel.assertExchange(transactionsExchange, 'fanout', { durable: true })
-      await this.channel.assertExchange(accountsExchange, 'fanout', { durable: true })
+      //   await this.channel.assertExchange(accountsExchange, 'fanout', { durable: true })
     } catch (error) {
       console.error('Failed to start RMQ connection:', error)
       throw error
