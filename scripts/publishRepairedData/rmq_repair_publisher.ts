@@ -1,6 +1,6 @@
-import { safeStringify } from '@shardeum-foundation/lib-types/build/src/utils/functions/stringify'
+import { safeJsonParse, safeStringify } from '@shardeum-foundation/lib-types/build/src/utils/functions/stringify'
 import { Connection, Channel, connect } from 'amqplib'
-import * as Crypto from '../../src/utils/Crypto'
+import * as crypto from '@shardeum-foundation/lib-crypto-utils'
 import { config as distributorConfig } from '../../src/Config'
 
 export class RMQRepairPublisher {
@@ -9,6 +9,7 @@ export class RMQRepairPublisher {
   private isConnected = false
 
   async start(): Promise<void> {
+    crypto.init('69fa4195670576c0160d660c3be36556ff8d504725be8a59b5a96509e0c994bc')
     try {
       this.connection = await connect({
         protocol: process.env.RMQ_PROTOCOL || 'amqp',
@@ -65,16 +66,17 @@ export class RMQRepairPublisher {
 
     try {
       for (const message of messages) {
-         const signedMessage = {
-           signedData: Crypto.sign(
-             message,
-             distributorConfig.DISTRIBUTOR_SECRET_KEY,
-             distributorConfig.DISTRIBUTOR_PUBLIC_KEY
-           ),
-         }
-         await this.channel.publish(exchangeName, '', Buffer.from(safeStringify(signedMessage)), {
-           persistent: true,
-         })
+        const objCopy = safeJsonParse(safeStringify(message))
+        const signedMessage = {
+          signedData: crypto.signObj(
+            objCopy,
+            distributorConfig.DISTRIBUTOR_SECRET_KEY,
+            distributorConfig.DISTRIBUTOR_PUBLIC_KEY
+          ),
+        }
+        await this.channel.publish(exchangeName, '', Buffer.from(safeStringify(signedMessage)), {
+          persistent: true,
+        })
       }
     } catch (error) {
       console.error(`Failed to publish messages to ${exchangeName}:`, error)
