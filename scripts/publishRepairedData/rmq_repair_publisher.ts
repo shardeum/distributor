@@ -103,7 +103,7 @@ export class RMQRepairPublisher {
     if (transactions.length <= 0) return
     const exchangeName = process.env.RMQ_TRANSACTIONS_EXCHANGE_NAME
     if (!exchangeName) throw new Error('Missing RMQ_TRANSACTIONS_EXCHANGE_NAME')
-    const messages = transactions.map((transaction) => ({ transaction }))
+    const messages = transactions.map((transaction) => ({ originalTx: transaction }))
     await this.publishMessages(exchangeName, messages)
   }
 
