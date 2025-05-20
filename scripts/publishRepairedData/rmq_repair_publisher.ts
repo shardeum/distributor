@@ -74,7 +74,7 @@ export class RMQRepairPublisher {
             distributorConfig.DISTRIBUTOR_PUBLIC_KEY
           ),
         }
-        await this.channel.publish(exchangeName, '', Buffer.from(safeStringify(signedMessage)), {
+        await this.channel.publish(exchangeName, '', Buffer.from(safeStringify(signedMessage.signedData)), {
           persistent: true,
         })
       }
