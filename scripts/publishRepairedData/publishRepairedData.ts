@@ -178,26 +178,20 @@ class DataRepairPublisher {
       }
 
       // Only keep entries where missing === true
-      const cycles = (data.cycles || [])
-        .filter((cycle) => cycle.missing === true)
-        .map((cycle) => ({
-          counter: cycle.counter,
-          hash: cycle.hash,
-        }))
-      const receipts = (data.receipts || [])
-        .filter((receipt) => receipt.missing === true)
-        .map((receipt) => ({
-          id: receipt.id,
-          cycle: receipt.cycle,
-          hash: receipt.hash,
-        }))
-      const transactions = (data.transactions || [])
-        .filter((tx) => tx.missing === true)
-        .map((tx) => ({
-          id: tx.id,
-          cycle: tx.cycle,
-          hash: tx.hash,
-        }))
+      const cycles = (data.cycles || []).map((cycle) => ({
+        counter: cycle.counter,
+        hash: cycle.hash,
+      }))
+      const receipts = (data.receipts || []).map((receipt) => ({
+        id: receipt.id,
+        cycle: receipt.cycle,
+        hash: receipt.hash,
+      }))
+      const transactions = (data.transactions || []).map((tx) => ({
+        id: tx.id,
+        cycle: tx.cycle,
+        hash: tx.hash,
+      }))
 
       // Validation checks after filtering/mapping
       if (!Array.isArray(cycles) || !Array.isArray(receipts) || !Array.isArray(transactions)) {
