@@ -335,6 +335,7 @@ export default class RMQDataPublisher {
       return
     }
 
+    this.isReconnecting = true
     let attempt = 0
     while (!this.isConnected) {
       attempt++
