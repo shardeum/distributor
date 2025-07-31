@@ -10,3 +10,5 @@ archiverdb.sqlite3-wal
 
 distributor.log
 db
+
+coverage
