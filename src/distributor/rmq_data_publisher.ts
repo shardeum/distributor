@@ -35,6 +35,7 @@ export default class RMQDataPublisher {
   private channel: ConfirmChannel | null
   private isConnected = false
   private isConnClosing = false
+  isReconnecting = false
 
   private cycleCursor = 0
   private batchSize = 21
@@ -311,9 +312,10 @@ export default class RMQDataPublisher {
     }
   }
 
-  private handleConnectionError(error: unknown): void {
+  private handleConnectionError = async (error: unknown): Promise<void> => {
     console.error(`[RMQDataPublisher#handleConnectionError]: Connection error: ${error}`)
     this.isConnected = false
+    await this.retryConnection()
   }
 
   private handleConnectionClose = async (): Promise<void> => {
@@ -324,28 +326,33 @@ export default class RMQDataPublisher {
     }
 
     this.isConnected = false
-    return new Promise<void>((resolve) => {
-      this.retryConnection()
-      resolve()
-    })
+    await this.retryConnection()
   }
 
-  private retryConnection(): void {
-    let attempt = 0
-    if (!this.isConnected) {
-      const interval = setInterval(async () => {
-        attempt++
-        console.log(`[retryConnection]: (Attempt ${attempt}) intitiated connection retry...`)
-        try {
-          await this.connect()
-          console.log(`[retryConnection]: (Attempt ${attempt}) successfully connected...`)
-          this.isConnected = true
-          clearInterval(interval)
-        } catch (e) {
-          console.log(`[retryConnection]: (Attempt ${attempt}) unsuccessul. Err: ${e}`)
-        }
-      }, 5000) // Wait 5 seconds before retrying
+  private async retryConnection(): Promise<void> {
+    if (this.isReconnecting) {
+      console.warn(`[retryConnection]: Connection retry already in progress...`)
+      return
     }
+
+    this.isReconnecting = true
+    let attempt = 0
+    while (!this.isConnected) {
+      attempt++
+      console.log(`[retryConnection]: (Attempt ${attempt}) intitiated connection retry...`)
+      try {
+        await this.connect()
+        console.log(`[retryConnection]: (Attempt ${attempt}) successfully connected...`)
+        this.isConnected = true
+        break
+      } catch (e) {
+        console.log(`[retryConnection]: (Attempt ${attempt}) unsuccessul. Err: ${e}`)
+      }
+      console.log(`[retryConnection]: (Attempt ${attempt}) waiting for 5s before retrying...`)
+      await sleep(5000) // Wait 5 seconds before retrying
+    }
+
+    this.isReconnecting = false
   }
 
   async cleanUp(): Promise<void> {
