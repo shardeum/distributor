@@ -93,7 +93,24 @@ export default class RMQDataPublisher {
 
   private async findAndPublishEvents(): Promise<void> {
     const start = this.cycleCursor
-    const end = this.cycleCursor + this.batchSize - 1
+    let end = this.cycleCursor + this.batchSize - 1
+
+    // Early exit if we've already reached the stop cycle
+    if (config.stopDistributionAtCycle >= 0 && start >= config.stopDistributionAtCycle) {
+      console.log(
+        `⛔ RMQ: Skipping data fetch - cursor ${start} has reached stopDistributionAtCycle ${config.stopDistributionAtCycle}`
+      )
+      return
+    }
+
+    // Limit end to stopDistributionAtCycle - 1 (since we want cycles before the stop cycle)
+    if (config.stopDistributionAtCycle >= 0 && end >= config.stopDistributionAtCycle) {
+      end = config.stopDistributionAtCycle - 1
+      console.log(
+        `⛔ RMQ: Limiting query range to cycles ${start}-${end} due to stopDistributionAtCycle ${config.stopDistributionAtCycle}`
+      )
+    }
+
     const cyclesFromDB = (await queryCycleRecordsBetween(start, end)) || []
 
     if (cyclesFromDB.length == 0) {
@@ -207,6 +224,7 @@ export default class RMQDataPublisher {
 
   private async publishCycles(cycles: CycleData[]): Promise<void> {
     if (cycles.length <= 0) return
+
     const messages = []
     for (let i = 0; i < cycles.length; i++) {
       const cycle = cycles.at(i)
@@ -228,6 +246,7 @@ export default class RMQDataPublisher {
 
   private async publishTransactions(transactions: OriginalTxData[]): Promise<void> {
     if (transactions.length <= 0) return
+
     const messages = []
     for (let i = 0; i < transactions.length; i++) {
       messages.push({
@@ -245,6 +264,7 @@ export default class RMQDataPublisher {
 
   private async publishReceipts(receipts: Receipt[]): Promise<void> {
     if (receipts.length <= 0) return
+
     const messages = []
     for (let i = 0; i < receipts.length; i++) {
       messages.push({

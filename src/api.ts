@@ -104,6 +104,12 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
       })
       return
     }
+
+    // Filter out cycles at or beyond stopDistributionAtCycle
+    if (config.stopDistributionAtCycle >= 0) {
+      cycleInfo = cycleInfo.filter((cycle: { counter: number }) => cycle.counter < config.stopDistributionAtCycle)
+    }
+
     const res = Crypto.sign({
       cycleInfo,
     })
@@ -265,6 +271,14 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
         originalTxs = await OriginalTxDB.queryOriginalTxsData(skip, limit, from, to)
       }
     }
+
+    // Filter out originalTxs at or beyond stopDistributionAtCycle
+    if (config.stopDistributionAtCycle >= 0 && Array.isArray(originalTxs)) {
+      originalTxs = (originalTxs as OriginalTxDB.OriginalTxData[]).filter(
+        (tx: OriginalTxDB.OriginalTxData) => tx.cycle < config.stopDistributionAtCycle
+      )
+    }
+
     const res = Crypto.sign({
       originalTxs,
     })
@@ -412,6 +426,14 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
         receipts = await ReceiptDB.queryReceiptsBetweenCycles(skip, limit, from, to)
       }
     }
+
+    // Filter out receipts at or beyond stopDistributionAtCycle
+    if (config.stopDistributionAtCycle >= 0 && Array.isArray(receipts)) {
+      receipts = (receipts as ReceiptDB.Receipt[]).filter(
+        (receipt: ReceiptDB.Receipt) => receipt.cycle < config.stopDistributionAtCycle
+      )
+    }
+
     const res = Crypto.sign({
       receipts,
     })
@@ -541,6 +563,14 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
       })
       return
     }
+
+    // Filter out accounts at or beyond stopDistributionAtCycle
+    if (config.stopDistributionAtCycle >= 0 && Array.isArray(accounts)) {
+      accounts = accounts.filter(
+        (account: AccountDB.AccountsCopy) => account.cycleNumber < config.stopDistributionAtCycle
+      )
+    }
+
     reply.send(res)
   })
 
@@ -675,6 +705,14 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
         error: 'not specified which account to show',
       }
     }
+
+    // Filter out transactions at or beyond stopDistributionAtCycle
+    if (config.stopDistributionAtCycle >= 0 && Array.isArray(transactions)) {
+      transactions = transactions.filter(
+        (tx: { cycleNumber: number }) => tx.cycleNumber < config.stopDistributionAtCycle
+      )
+    }
+
     reply.send(res)
   })
 

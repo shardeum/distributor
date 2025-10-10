@@ -35,6 +35,7 @@ export interface Config {
   subscribers: [] | Subscriber[]
   distributorMode: string
   MQ_DISTRIBUTOR_SERVER_PORT: number
+  stopDistributionAtCycle: number
 }
 
 let config: Config = {
@@ -65,6 +66,7 @@ let config: Config = {
   subscribers: [],
   distributorMode: process.env.DISTRIBUTOR_MODE || distributorMode.WS.toString(),
   MQ_DISTRIBUTOR_SERVER_PORT: 6101,
+  stopDistributionAtCycle: -1, // -1 means no limit, any positive number will stop distribution at that cycle
 }
 
 export interface Subscriber {
