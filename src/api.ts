@@ -571,6 +571,30 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
       )
     }
 
+    // Create response AFTER filtering
+    if (!res) {
+      res = Crypto.sign({
+        accounts,
+      })
+    } else if (startCycle || startCycle === 0) {
+      // Recreate response with filtered accounts
+      if (page) {
+        res = Crypto.sign({
+          accounts,
+          totalAccounts,
+        })
+      } else {
+        res = Crypto.sign({
+          totalAccounts,
+        })
+      }
+    } else {
+      // Recreate response with filtered accounts for other cases
+      res = Crypto.sign({
+        accounts,
+      })
+    }
+
     reply.send(res)
   })
 
@@ -713,6 +737,32 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
       )
     }
 
+    // Create response AFTER filtering
+    if (res && res.success === false) {
+      // Keep error responses as-is
+      reply.send(res)
+      return
+    }
+
+    if (startCycle || startCycle === 0) {
+      // Recreate response with filtered transactions
+      if (page) {
+        res = Crypto.sign({
+          transactions,
+          totalTransactions,
+        })
+      } else {
+        res = Crypto.sign({
+          totalTransactions,
+        })
+      }
+    } else {
+      // Recreate response with filtered transactions for other cases
+      res = Crypto.sign({
+        transactions,
+      })
+    }
+
     reply.send(res)
   })
 
@@ -726,11 +776,34 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
       reply.send(Crypto.sign({ success: false, error: result.error }))
       return
     }
-    const totalCycles = await CycleDB.queryCyleCount()
-    const totalAccounts = await AccountDB.queryAccountCount()
-    const totalTransactions = await TransactionDB.queryTransactionCount()
-    const totalReceipts = await ReceiptDB.queryReceiptCount()
-    const totalOriginalTxs = await OriginalTxDB.queryOriginalTxDataCount()
+
+    let totalCycles
+    let totalAccounts
+    let totalTransactions
+    let totalReceipts
+    let totalOriginalTxs
+
+    // If stopDistributionAtCycle is set, only count data before the cutoff
+    if (config.stopDistributionAtCycle >= 0) {
+      // Count cycles up to (but not including) stopDistributionAtCycle
+      const cycles = await CycleDB.queryCycleRecordsBetween(0, config.stopDistributionAtCycle - 1)
+      totalCycles = cycles ? cycles.length : 0
+
+      // Count accounts, transactions, receipts, and originalTxs up to the cutoff cycle
+      totalAccounts = (await AccountDB.queryAccountCountBetweenCycles(0, config.stopDistributionAtCycle - 1)) || 0
+      totalTransactions =
+        (await TransactionDB.queryTransactionCountBetweenCycles(0, config.stopDistributionAtCycle - 1)) || 0
+      totalReceipts = (await ReceiptDB.queryReceiptCountBetweenCycles(0, config.stopDistributionAtCycle - 1)) || 0
+      totalOriginalTxs = (await OriginalTxDB.queryOriginalTxDataCount(0, config.stopDistributionAtCycle - 1)) || 0
+    } else {
+      // No limit - return all counts
+      totalCycles = (await CycleDB.queryCyleCount()) || 0
+      totalAccounts = await AccountDB.queryAccountCount()
+      totalTransactions = (await TransactionDB.queryTransactionCount()) || 0
+      totalReceipts = (await ReceiptDB.queryReceiptCount()) || 0
+      totalOriginalTxs = (await OriginalTxDB.queryOriginalTxDataCount()) || 0
+    }
+
     reply.send(
       Crypto.sign({
         totalCycles,
