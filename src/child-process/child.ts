@@ -123,9 +123,9 @@ export const registerDataReaderListeners = (reader: DataLogReader): void => {
       }
 
       // Check if distribution should stop at a specific cycle
-      if (config.stopDistributionAtCycle >= 0 && dataCycle >= config.stopDistributionAtCycle) {
+      if (config.stopDistributionAtCycle >= 0 && dataCycle > config.stopDistributionAtCycle) {
         console.log(
-          `⛔ Distribution stopped: data cycle ${dataCycle} has reached or exceeded stopDistributionAtCycle ${config.stopDistributionAtCycle}`
+          `⛔ Distribution stopped: data cycle ${dataCycle} has exceeded stopDistributionAtCycle ${config.stopDistributionAtCycle}`
         )
         return
       }

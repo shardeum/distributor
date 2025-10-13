@@ -107,7 +107,7 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
 
     // Filter out cycles at or beyond stopDistributionAtCycle
     if (config.stopDistributionAtCycle >= 0) {
-      cycleInfo = cycleInfo.filter((cycle: { counter: number }) => cycle.counter < config.stopDistributionAtCycle)
+      cycleInfo = cycleInfo.filter((cycle: { counter: number }) => cycle.counter <= config.stopDistributionAtCycle)
     }
 
     const res = Crypto.sign({
@@ -275,7 +275,7 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
     // Filter out originalTxs at or beyond stopDistributionAtCycle
     if (config.stopDistributionAtCycle >= 0 && Array.isArray(originalTxs)) {
       originalTxs = (originalTxs as OriginalTxDB.OriginalTxData[]).filter(
-        (tx: OriginalTxDB.OriginalTxData) => tx.cycle < config.stopDistributionAtCycle
+        (tx: OriginalTxDB.OriginalTxData) => tx.cycle <= config.stopDistributionAtCycle
       )
     }
 
@@ -430,7 +430,7 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
     // Filter out receipts at or beyond stopDistributionAtCycle
     if (config.stopDistributionAtCycle >= 0 && Array.isArray(receipts)) {
       receipts = (receipts as ReceiptDB.Receipt[]).filter(
-        (receipt: ReceiptDB.Receipt) => receipt.cycle < config.stopDistributionAtCycle
+        (receipt: ReceiptDB.Receipt) => receipt.cycle <= config.stopDistributionAtCycle
       )
     }
 
@@ -567,7 +567,7 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
     // Filter out accounts at or beyond stopDistributionAtCycle
     if (config.stopDistributionAtCycle >= 0 && Array.isArray(accounts)) {
       accounts = accounts.filter(
-        (account: AccountDB.AccountsCopy) => account.cycleNumber < config.stopDistributionAtCycle
+        (account: AccountDB.AccountsCopy) => account.cycleNumber <= config.stopDistributionAtCycle
       )
     }
 
@@ -733,7 +733,7 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
     // Filter out transactions at or beyond stopDistributionAtCycle
     if (config.stopDistributionAtCycle >= 0 && Array.isArray(transactions)) {
       transactions = transactions.filter(
-        (tx: { cycleNumber: number }) => tx.cycleNumber < config.stopDistributionAtCycle
+        (tx: { cycleNumber: number }) => tx.cycleNumber <= config.stopDistributionAtCycle
       )
     }
 
@@ -785,16 +785,16 @@ export function registerRoutes(server: FastifyInstance<Server, IncomingMessage, 
 
     // If stopDistributionAtCycle is set, only count data before the cutoff
     if (config.stopDistributionAtCycle >= 0) {
-      // Count cycles up to (but not including) stopDistributionAtCycle
-      const cycles = await CycleDB.queryCycleRecordsBetween(0, config.stopDistributionAtCycle - 1)
+      // Count cycles up to (and including) stopDistributionAtCycle
+      const cycles = await CycleDB.queryCycleRecordsBetween(0, config.stopDistributionAtCycle)
       totalCycles = cycles ? cycles.length : 0
 
       // Count accounts, transactions, receipts, and originalTxs up to the cutoff cycle
-      totalAccounts = (await AccountDB.queryAccountCountBetweenCycles(0, config.stopDistributionAtCycle - 1)) || 0
+      totalAccounts = (await AccountDB.queryAccountCountBetweenCycles(0, config.stopDistributionAtCycle)) || 0
       totalTransactions =
-        (await TransactionDB.queryTransactionCountBetweenCycles(0, config.stopDistributionAtCycle - 1)) || 0
-      totalReceipts = (await ReceiptDB.queryReceiptCountBetweenCycles(0, config.stopDistributionAtCycle - 1)) || 0
-      totalOriginalTxs = (await OriginalTxDB.queryOriginalTxDataCount(0, config.stopDistributionAtCycle - 1)) || 0
+        (await TransactionDB.queryTransactionCountBetweenCycles(0, config.stopDistributionAtCycle)) || 0
+      totalReceipts = (await ReceiptDB.queryReceiptCountBetweenCycles(0, config.stopDistributionAtCycle)) || 0
+      totalOriginalTxs = (await OriginalTxDB.queryOriginalTxDataCount(0, config.stopDistributionAtCycle)) || 0
     } else {
       // No limit - return all counts
       totalCycles = (await CycleDB.queryCyleCount()) || 0

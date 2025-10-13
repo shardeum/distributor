@@ -96,16 +96,16 @@ export default class RMQDataPublisher {
     let end = this.cycleCursor + this.batchSize - 1
 
     // Early exit if we've already reached the stop cycle
-    if (config.stopDistributionAtCycle >= 0 && start >= config.stopDistributionAtCycle) {
+    if (config.stopDistributionAtCycle >= 0 && start > config.stopDistributionAtCycle) {
       console.log(
-        `⛔ RMQ: Skipping data fetch - cursor ${start} has reached stopDistributionAtCycle ${config.stopDistributionAtCycle}`
+        `⛔ RMQ: Skipping data fetch - cursor ${start} has exceeded stopDistributionAtCycle ${config.stopDistributionAtCycle}`
       )
       return
     }
 
-    // Limit end to stopDistributionAtCycle - 1 (since we want cycles before the stop cycle)
-    if (config.stopDistributionAtCycle >= 0 && end >= config.stopDistributionAtCycle) {
-      end = config.stopDistributionAtCycle - 1
+    // Limit end to stopDistributionAtCycle (since we want cycles up to and including the stop cycle)
+    if (config.stopDistributionAtCycle >= 0 && end > config.stopDistributionAtCycle) {
+      end = config.stopDistributionAtCycle
       console.log(
         `⛔ RMQ: Limiting query range to cycles ${start}-${end} due to stopDistributionAtCycle ${config.stopDistributionAtCycle}`
       )

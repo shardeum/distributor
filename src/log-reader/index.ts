@@ -176,9 +176,9 @@ class DataLogReader extends EventEmitter {
                     dataCycle = parse.cycle
                   }
 
-                  if (dataCycle >= config.stopDistributionAtCycle) {
+                  if (dataCycle > config.stopDistributionAtCycle) {
                     console.log(
-                      `⛔ Log Reader: Stopping ${this.dataName} log reading - reached stopDistributionAtCycle ${config.stopDistributionAtCycle}`
+                      `⛔ Log Reader: Stopping ${this.dataName} log reading - exceeded stopDistributionAtCycle ${config.stopDistributionAtCycle}`
                     )
                     clearInterval(fileStreamer)
                     rl.close()
