@@ -103,20 +103,33 @@ export const registerDataReaderListeners = (reader: DataLogReader): void => {
         receipt?: unknown
         originalTx?: unknown
       } = {}
+      let dataCycle = -1
       switch (reader.dataName) {
         case 'cycle':
           data.cycle = logData
+          dataCycle = (logData as { counter: number })?.counter
           incrementCycleCount()
           break
         case 'receipt':
           data.receipt = logData
+          dataCycle = (logData as { cycle: number })?.cycle
           incrementReceiptCount()
           break
         case 'originalTx':
           data.originalTx = logData
+          dataCycle = (logData as { cycle: number })?.cycle
           incrementOriginalTxCount()
           break
       }
+
+      // Check if distribution should stop at a specific cycle
+      if (config.stopDistributionAtCycle >= 0 && dataCycle > config.stopDistributionAtCycle) {
+        console.log(
+          `⛔ Distribution stopped: data cycle ${dataCycle} has exceeded stopDistributionAtCycle ${config.stopDistributionAtCycle}`
+        )
+        return
+      }
+
       sendDataToAllClients({
         signedData: Crypto.sign(data, config.DISTRIBUTOR_SECRET_KEY, config.DISTRIBUTOR_PUBLIC_KEY),
       })

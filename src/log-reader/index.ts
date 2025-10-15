@@ -163,6 +163,30 @@ class DataLogReader extends EventEmitter {
                 clearInterval(fileStreamer)
               } else {
                 const parse = StringUtils.safeJsonParse(data)
+
+                // Check if we should stop reading based on cycle cutoff
+                if (config.stopDistributionAtCycle >= 0) {
+                  let dataCycle = -1
+                  if (this.dataName === 'cycle' && parse?.counter !== undefined) {
+                    dataCycle = parse.counter
+                  } else if (
+                    (this.dataName === 'receipt' || this.dataName === 'originalTx') &&
+                    parse?.cycle !== undefined
+                  ) {
+                    dataCycle = parse.cycle
+                  }
+
+                  if (dataCycle > config.stopDistributionAtCycle) {
+                    console.log(
+                      `⛔ Log Reader: Stopping ${this.dataName} log reading - exceeded stopDistributionAtCycle ${config.stopDistributionAtCycle}`
+                    )
+                    clearInterval(fileStreamer)
+                    rl.close()
+                    stream.close()
+                    return
+                  }
+                }
+
                 totalNumberOfEntries += 1
                 /* prettier-ignore */ if (config.VERBOSE) console.log(`${this.dataName}-data`, data)
                 this.emit(`${this.dataName}-data`, parse)
