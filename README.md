@@ -1,62 +1,84 @@
-# Data Distributor
+# Distributor 
 
 The Distributor service is designed to provide real-time network data, referred to as FIREHOSE data, including `Cycle Data`, `Original Transaction Data` and `Receipt Data`, to its **Collector** clients over a socket connection.
 
-# Working
+![LDRPC Architecture](https://github.com/shardeum/relayer-collector/blob/ce3e885749bb5dadb06a6f1a0df36c8a3ecd0940/ldrpc-setup.png?raw=true)
 
-1. The Distributor is supposed to read every new chunk of data written by another collector (or archiver) service (that it is paired with) in log files (found under the `/data-logs` directory of the archiver/collector service).
-2. Every socket connection request received on the Distributor service is forwaded to a **Child process instance** spawned by the distributor service (`distributor.ts`). When a distributor detects a new socket connection requests it checks for any existing child processes running, if found then it checks if the number of socket clients it is handling is equal to `MAX_CLIENTS_PER_CHILD` value defined in the code, if not it assigns the socket request to the first child-process that is available, if no available child processes are found then the distributor spins up a new child process and assigns the socket request to it to handle.
-3. The **Child process** is responsible for reading the data from the log files (through the **DataLogReader** class) and forwarding the same to its connected socket clients. The child process is also responsible for handling the socket disconnection events and reporting the same to the parent process (`distributor.ts`), when the last socket client of a child process disconnects, the child process is killed. This is done so that the child processes are spawned only when required.
+## Key Components
 
-# Usage
+The Distributor service consists of the following key components:
 
-There are two scenarios in which the distributor service is used:
+1. **Main Distributor Process** (`distributor.ts`): Manages incoming socket connections and spawns child processes.
+2. **Child Processes** (`child-process/child.ts`): Handle individual socket connections and data distribution.
+3. **DataLogReader** (`log-reader/index.ts`): Reads data from log files.
+4. **Database Interfaces** (`dbstore/`): Interact with the SQLite database for various data types.
+5. **Utility Functions** (`utils/`): Provide helper functions for crypto operations, serialization, etc.
 
-- With an [**Archiver**](https://gitlab.com/shardus/archive/archive-server) service
-- With a [**Collector**](https://gitlab.com/shardus/relayer/collector) service
+## Working
 
-In both cases the following steps are required to be followed:
+1. The Distributor reads new data chunks written by another collector (or archiver) service in log files (found under the `/data-logs` directory of the archiver/collector service).
+
+2. When a new socket connection request is received:
+   - The Distributor checks for existing child processes.
+   - If a child process is available and not at capacity (`MAX_CLIENTS_PER_CHILD`), the request is assigned to it.
+   - If no available child processes are found, a new one is spawned.
+
+3. Each **Child process**:
+   - Reads data from log files using the **DataLogReader** class.
+   - Forwards data to its connected socket clients.
+   - Handles socket disconnection events.
+   - Reports to the parent process (`distributor.ts`).
+   - Is terminated when its last socket client disconnects.
+
+## Usage
+
+The distributor service can be used with either an [**Archiver**](https://github.com/shardeum/archive-server) service or a [**Collector**](https://github.com/shardeum/relayer-collector) service.
+
+### Setup
 
 1. Configure `distributor-config.json`:
 
-- Set **`ARCHIVER_DB_PATH`H** to the relative path or the absolute path of the database (that ends with `.sqlite3`) file of the archiver/collector service.
-- Set the **`DATA_LOG_DIR`** to the relative path or the absolute path of the directory where the archiver/collector service writes the data log files (path to the `/data-logs/<archiverip_port>` folder).
-- For local testing, we can use the default credentials for the distributor service.The subscriber keys in the `distributor-config.json` file are of the testing explorer and testing collector services to be used in the local network testing.
-- For production, be sure to change the default credentials and subscriber public keys. Update the **`DISTRIBUTOR_PUBLIC_KEY`** and **`DISTRIBUTOR_SECRET_KEY`** for the distributor service.
-- Set the **`limitToSubscribersOnly`** to `true` if you want to perform a subscriber check before serving the data to the collector. If the subscriber check is enabled, then you need to add the public key of the subscriber (or collector) to the **`subscribers`** array. The subscriber object should contain the following fields:
-  - **`publicKey`**: The public key of the subscriber.
-  - **`expirationTimestamp`**: The timestamp at which the subscription expires. If the value is `0`, then the subscription does not expire.
-  - **`subscriptionType`**: The type of subscription. The value should be `FIREHOSE` for the distributor service.
-- If you do not wish to perform the subscriber check, then set the **limitToSubscribersOnly** to `false`. If not, then make sure you add the public key of the subscriber (or collector) to the **`subscribers`** array.
+   - Set `ARCHIVER_DB_PATH` to the path of the archiver/collector service database file (`.sqlite3`).
+   - Set `DATA_LOG_DIR` to the directory where data log files are written (`/data-logs/<archiverip_port>`).
+   - For production, update `DISTRIBUTOR_PUBLIC_KEY` and `DISTRIBUTOR_SECRET_KEY`.
+   - Set `limitToSubscribersOnly` to `true` for subscriber checks, or `false` to disable.
+   - If enabled, add subscriber public keys to the `subscribers` array.
 
-- e.g. For an archiver db, the `distributor-config.json` file should look like:
+   Example configuration:
 
-```json
-{
-  "ARCHIVER_DB_PATH": "/home/user/archive-server/archiver-db/archiverdb-4000.sqlite3",
-  "DATA_LOG_DIR": "/home/user/archive-server/data-logs/127.0.0.1_4000",
-  "limitToSubscribersOnly": true, // or false for no subscriber check
-  "subscribers": [
-    {
-      "publicKey": "COLLECTOR_PUBLIC_KEY",
-      "expirationTimestamp": EXPIRATION_TIMESTAMP, // or 0 for no expiration
-      "subscriptionType": "FIREHOSE"
-    }
-  ]
-}
-```
+   ```json
+   {
+     "ARCHIVER_DB_PATH": "/home/user/archive-server/archiver-db/archiverdb-4000.sqlite3", 
+     // assuming you're running a local archive server 
+     "DATA_LOG_DIR": "/home/user/archive-server/data-logs/127.0.0.1_4000",
+     "limitToSubscribersOnly": true,
+     "subscribers": [
+       {
+         "publicKey": "COLLECTOR_PUBLIC_KEY",
+         "expirationTimestamp": 0,
+         "subscriptionType": "FIREHOSE"
+       }
+     ]
+   }
+   ```
+2.  Install dependencies:
+    ```bash 
+    npm  install
+    ```
+   
+3.  Run the distributor service:
+    
+    ```bash 
+    npm run start
+    ```
+    
 
-2. Install all the dependencies:
+## Development
 
-```bash
-npm install
-```
-
-3. Run the distributor service:
-
-```bash
-npm run start
-```
+-   The `src/` directory contains the main source code.
+-   `scripts/` contains utility scripts for testing.
+-   Database interactions are handled in the `dbstore/` directory.
+-   Utility functions are located in `utils/`.
 
 # Health Check
 
@@ -65,4 +87,4 @@ npm run start
 
 ## Contributing
 
-Contributions are highly encouraged! We welcome everyone to participate in our codebases, issue trackers, and any other form of communication. However, we expect all contributors to adhere to our [code of conduct](./CODE_OF_CONDUCT.md) to ensure a positive and collaborative environment for all involved in the project.
+Contributions are welcome! Please adhere to our [code of conduct](./CODE_OF_CONDUCT.md) when participating in this project.
